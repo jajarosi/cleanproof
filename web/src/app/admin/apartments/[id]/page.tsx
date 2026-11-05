@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getDict } from "@/lib/i18n/server";
+import { attachPhotos, fetchCleanings } from "@/lib/queries";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Duration, LocalTime } from "@/components/LocalTime";
+import { MarkDirtyButton } from "../../MarkDirtyButton";
+
+export default async function ApartmentHistory({ params }: PageProps<"/admin/apartments/[id]">) {
+  const { id } = await params;
+  const { t } = await getDict();
+  const supabase = await createClient();
+
+  const { data: apt } = await supabase.from("apartments").select("id, name, status").eq("id", id).single();
+  if (!apt) notFound();
+
+  const cleanings = await attachPhotos(supabase, await fetchCleanings(supabase, { apartmentId: id, limit: 50 }));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link href="/admin" className="text-sm text-slate-500 hover:underline">← {t.common.back}</Link>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-bold">{apt.name}</h1>
+          <StatusBadge status={apt.status} />
+          {apt.status === "clean" && <div className="w-56"><MarkDirtyButton id={apt.id} /></div>}
+        </div>
+      </div>
+
+      <h2 className="text-lg font-semibold">{t.admin.history}</h2>
+      {cleanings.length === 0 && <p className="text-slate-500">{t.admin.noHistory}</p>}
+
+      <ol className="space-y-4">
+        {cleanings.map((c) => (
+          <li key={c.id} className="card space-y-3 p-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <StatusBadge status={c.status} />
+              <span className="font-semibold text-slate-900">{c.cleaner?.full_name}</span>
+              <span className="text-slate-600">
+                {t.admin.start} : <LocalTime iso={c.started_at} />
+              </span>
+              {c.finished_at && (
+                <span className="text-slate-600">
+                  {t.admin.end} : <LocalTime iso={c.finished_at} /> (<Duration from={c.started_at} to={c.finished_at} />)
+                </span>
+              )}
+            </div>
+            {c.comment && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">💬 {c.comment}</p>}
+            {c.photos.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                {c.photos.map((p) => (
+                  <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="relative block aspect-square overflow-hidden rounded-lg bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt="" className="h-full w-full object-cover transition hover:scale-105" />
+                    <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
+                      <LocalTime iso={p.created_at} mode="time" />
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
