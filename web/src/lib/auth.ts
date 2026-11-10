@@ -1,18 +1,28 @@
 import "server-only";
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+export type Role = "admin" | "cleaner";
+export type MembershipStatus = "pending" | "active" | "disabled";
+
+/** Utilisateur connecté + entreprise sélectionnée. */
 export type Profile = {
   id: string;
-  org_id: string;
-  role: "admin" | "cleaner";
   full_name: string;
   username: string;
-  active: boolean;
+  org_id: string;
+  org_name: string;
+  role: Role;
+  /** Nombre d'entreprises actives de la personne (pour afficher "changer d'entreprise"). */
+  org_count: number;
 };
 
-/** Domaine technique des emails internes (les agents se connectent avec un simple identifiant). */
+/** Cookie contenant l'entreprise choisie à la connexion. */
+export const ORG_COOKIE = "org";
+
+/** Domaine technique des emails internes (les agents se connectent avec leur nom). */
 export const STAFF_EMAIL_DOMAIN = "staff.cleaner.local";
 export const usernameToEmail = (u: string) => `${u.trim().toLowerCase()}@${STAFF_EMAIL_DOMAIN}`;
 /** Email de connexion d'un profil : les responsables ont un vrai email, les agents un email technique. */
@@ -24,7 +34,7 @@ export const profileEmail = (username: string) => (username.includes("@") ? user
  */
 export function loginKey(name: string) {
   return name
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
     .split(" ").filter(Boolean).sort().join(" ");
 }
@@ -35,25 +45,67 @@ export function technicalUsername(name: string) {
   return `${slug}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-/** Profil de l'utilisateur connecté, ou redirection vers /login. */
-export const requireProfile = cache(async (): Promise<Profile> => {
+/** Id de l'utilisateur connecté, ou redirection vers /login. */
+export const requireUserId = cache(async (): Promise<string> => {
   const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  const uid = claims?.claims?.sub;
+  const { data } = await supabase.auth.getClaims();
+  const uid = data?.claims?.sub;
   if (!uid) redirect("/login");
+  return uid;
+});
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, org_id, role, full_name, username, active")
-    .eq("id", uid)
-    .single<Profile>();
+export type MembershipRow = {
+  org_id: string;
+  role: Role;
+  status: MembershipStatus;
+  organizations: { name: string } | null;
+};
 
-  if (!profile || !profile.active) redirect("/login?disabled=1");
-  return profile;
+/** Toutes les adhésions de l'utilisateur connecté. */
+export const myMemberships = cache(async (): Promise<MembershipRow[]> => {
+  const uid = await requireUserId();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("memberships")
+    .select("org_id, role, status, organizations(name)")
+    .eq("user_id", uid);
+  return (data ?? []) as unknown as MembershipRow[];
+});
+
+/**
+ * Profil + entreprise sélectionnée (cookie). Si aucune entreprise valide
+ * n'est sélectionnée → page de choix d'entreprise.
+ */
+export const requireProfile = cache(async (): Promise<Profile> => {
+  const uid = await requireUserId();
+  const supabase = await createClient();
+  const [{ data: profile }, memberships, cookieStore] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, username").eq("id", uid).single(),
+    myMemberships(),
+    cookies(),
+  ]);
+  if (!profile) redirect("/login");
+
+  const active = memberships.filter((m) => m.status === "active");
+  const selected = active.find((m) => m.org_id === cookieStore.get(ORG_COOKIE)?.value);
+  if (!selected) redirect("/select-org");
+
+  return {
+    ...profile,
+    org_id: selected.org_id,
+    org_name: selected.organizations?.name ?? "",
+    role: selected.role,
+    org_count: active.length,
+  };
 });
 
 export async function requireAdmin(): Promise<Profile> {
   const p = await requireProfile();
   if (p.role !== "admin") redirect("/app");
   return p;
+}
+
+/** N'accepte que des chemins internes (évite les redirections vers un site externe). */
+export function safeNext(next: unknown): string | null {
+  return typeof next === "string" && /^\/[a-zA-Z0-9/_-]*$/.test(next) && !next.startsWith("//") ? next : null;
 }

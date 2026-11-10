@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 import { getDict } from "@/lib/i18n/server";
 import { fmt } from "@/lib/i18n/dictionaries";
 import { attachPhotos, fetchCleanings, type CleaningRow } from "@/lib/queries";
@@ -8,12 +9,13 @@ import { Duration, LocalTime } from "@/components/LocalTime";
 import { MarkDirtyButton } from "./MarkDirtyButton";
 
 export default async function AdminDashboard() {
+  const me = await requireAdmin();
   const { t } = await getDict();
   const supabase = await createClient();
 
   const [{ data: apartments }, cleanings] = await Promise.all([
-    supabase.from("apartments").select("id, name, status").order("name"),
-    fetchCleanings(supabase, { statuses: ["done", "in_progress"], limit: 1000 }),
+    supabase.from("apartments").select("id, name, status").eq("org_id", me.org_id).order("name"),
+    fetchCleanings(supabase, { orgId: me.org_id, statuses: ["done", "in_progress"], limit: 1000 }),
   ]);
 
   // Dernier ménage terminé + ménage en cours, par logement

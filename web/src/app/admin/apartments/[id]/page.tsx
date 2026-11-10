@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 import { getDict } from "@/lib/i18n/server";
 import { attachPhotos, fetchCleanings } from "@/lib/queries";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,13 +10,14 @@ import { MarkDirtyButton } from "../../MarkDirtyButton";
 
 export default async function ApartmentHistory({ params }: PageProps<"/admin/apartments/[id]">) {
   const { id } = await params;
+  const me = await requireAdmin();
   const { t } = await getDict();
   const supabase = await createClient();
 
-  const { data: apt } = await supabase.from("apartments").select("id, name, status").eq("id", id).single();
+  const { data: apt } = await supabase.from("apartments").select("id, name, status").eq("id", id).eq("org_id", me.org_id).single();
   if (!apt) notFound();
 
-  const cleanings = await attachPhotos(supabase, await fetchCleanings(supabase, { apartmentId: id, limit: 50 }));
+  const cleanings = await attachPhotos(supabase, await fetchCleanings(supabase, { orgId: me.org_id, apartmentId: id, limit: 50 }));
 
   return (
     <div className="space-y-6">

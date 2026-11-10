@@ -1,6 +1,7 @@
+import { safeNext } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { disabled } = await searchParams;
-  return <LoginForm disabled={disabled === "1"} />;
+  const { next } = await searchParams;
+  return <LoginForm next={safeNext(next) ?? ""} />;
 }

@@ -12,9 +12,9 @@ export default async function CleanerHome({ searchParams }: PageProps<"/app">) {
   const supabase = await createClient();
 
   const [{ data: apartments }, { data: mine }] = await Promise.all([
-    supabase.from("apartments").select("id, name, status").order("name"),
+    supabase.from("apartments").select("id, name, status").eq("org_id", profile.org_id).order("name"),
     supabase.from("cleanings").select("id, apartment_id")
-      .eq("cleaner_id", profile.id).eq("status", "in_progress"),
+      .eq("cleaner_id", profile.id).eq("org_id", profile.org_id).eq("status", "in_progress"),
   ]);
 
   const myByApt = new Map((mine ?? []).map((c) => [c.apartment_id, c.id]));

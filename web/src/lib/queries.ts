@@ -19,9 +19,10 @@ const CLEANING_COLS =
 
 export async function fetchCleanings(
   supabase: SupabaseClient,
-  opts: { apartmentId?: string; statuses?: CleaningRow["status"][]; limit?: number },
+  opts: { orgId: string; apartmentId?: string; statuses?: CleaningRow["status"][]; limit?: number },
 ) {
-  let q = supabase.from("cleanings").select(CLEANING_COLS).order("started_at", { ascending: false });
+  let q = supabase.from("cleanings").select(CLEANING_COLS).eq("org_id", opts.orgId)
+    .order("started_at", { ascending: false });
   if (opts.apartmentId) q = q.eq("apartment_id", opts.apartmentId);
   if (opts.statuses) q = q.in("status", opts.statuses);
   const { data } = await q.limit(opts.limit ?? 100);

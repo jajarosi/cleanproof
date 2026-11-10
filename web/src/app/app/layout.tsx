@@ -8,9 +8,10 @@ export default async function CleanerLayout({ children }: LayoutProps<"/app">) {
   return (
     <>
       <AppHeader
-        title={t.appName}
+        orgName={profile.org_name}
         userName={profile.full_name}
         logoutLabel={t.common.logout}
+        switchOrgLabel={profile.org_count > 1 ? t.auth.switchOrg : undefined}
         links={profile.role === "admin" ? [{ href: "/admin", label: t.admin.dashboard }] : []}
       />
       <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
