@@ -34,11 +34,12 @@ export async function signup(_: FormState, formData: FormData): Promise<FormStat
     email, password, email_confirm: true,
   });
   if (userErr || !created.user) {
+    console.error("[signup] createUser failed:", userErr);
     return { error: userErr?.message?.includes("already") ? t.auth.emailTaken : t.errors.generic };
   }
   const uid = created.user.id;
 
-  const { data: org } = await admin.from("organizations").insert({ name: company }).select("id").single();
+  const { data: org, error: orgErr } = await admin.from("organizations").insert({ name: company }).select("id").single();
   const { error: profErr } = await admin.from("profiles").insert({
     id: uid, full_name: fullName, username: email, login_key: loginKey(fullName),
   });
@@ -47,6 +48,7 @@ export async function signup(_: FormState, formData: FormData): Promise<FormStat
     : { error: true };
 
   if (!org || profErr || memErr) {
+    console.error("[signup] setup failed:", { orgErr, profErr, memErr });
     // Annule tout pour ne pas laisser de compte orphelin
     if (org) await admin.from("organizations").delete().eq("id", org.id);
     await admin.auth.admin.deleteUser(uid);
