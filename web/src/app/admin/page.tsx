@@ -6,6 +6,9 @@ import { fmt } from "@/lib/i18n/dictionaries";
 import { attachPhotos, fetchCleanings, type CleaningRow } from "@/lib/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Duration, LocalTime } from "@/components/LocalTime";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { FilterableList } from "@/components/FilterableList";
+import { ADDRESS_COLS, formatAddress, searchText } from "@/lib/apartments";
 import { MarkDirtyButton } from "./MarkDirtyButton";
 
 export default async function AdminDashboard() {
@@ -14,7 +17,7 @@ export default async function AdminDashboard() {
   const supabase = await createClient();
 
   const [{ data: apartments }, cleanings] = await Promise.all([
-    supabase.from("apartments").select("id, name, status").eq("org_id", me.org_id).order("name"),
+    supabase.from("apartments").select(`id, name, status, ${ADDRESS_COLS}`).eq("org_id", me.org_id).order("name"),
     fetchCleanings(supabase, { orgId: me.org_id, statuses: ["done", "in_progress"], limit: 1000 }),
   ]);
 
@@ -29,19 +32,10 @@ export default async function AdminDashboard() {
   const doneByApt = new Map(withPhotos.map((c) => [c.apartment_id, c]));
 
   const list = (apartments ?? []).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  const counts = { dirty: 0, in_progress: 0, clean: 0 };
-  list.forEach((a) => counts[a.status as keyof typeof counts]++);
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-bold">{t.admin.dashboard}</h1>
-        <div className="flex gap-2 text-sm">
-          <span className="rounded-full bg-orange-100 px-3 py-1 font-semibold text-orange-800">{counts.dirty} {t.status.dirty}</span>
-          <span className="rounded-full bg-blue-100 px-3 py-1 font-semibold text-blue-800">{counts.in_progress} {t.status.in_progress}</span>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-800">{counts.clean} {t.status.clean}</span>
-        </div>
-      </div>
+      <AutoRefresh />
+      <h1 className="text-2xl font-bold">{t.admin.dashboard}</h1>
 
       {list.length === 0 && (
         <div className="card p-6 text-center text-slate-500">
@@ -49,13 +43,16 @@ export default async function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {list.map((a) => {
+      <FilterableList
+        statusFilter
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        items={list.map((a) => {
           const done = doneByApt.get(a.id);
           const now = current.get(a.id);
           const cover = done?.photos[0];
-          return (
-            <div key={a.id} className="card flex flex-col overflow-hidden">
+          const address = formatAddress(a, t);
+          return { key: a.id, text: searchText(a), status: a.status, node: (
+            <div className="card flex flex-col overflow-hidden">
               <Link href={`/admin/apartments/${a.id}`} className="block aspect-[4/3] bg-slate-100">
                 {cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -69,6 +66,7 @@ export default async function AdminDashboard() {
                   <Link href={`/admin/apartments/${a.id}`} className="truncate text-lg font-semibold hover:underline">{a.name}</Link>
                   <StatusBadge status={a.status} />
                 </div>
+                {address && <p className="-mt-1 truncate text-sm text-slate-500">📍 {address}</p>}
 
                 {now && (
                   <p className="text-sm text-blue-700">
@@ -99,9 +97,9 @@ export default async function AdminDashboard() {
                 </div>
               </div>
             </div>
-          );
+          ) };
         })}
-      </div>
+      />
     </div>
   );
 }

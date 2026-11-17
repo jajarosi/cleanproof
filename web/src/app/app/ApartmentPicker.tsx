@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export type PickerApartment = {
-  id: string; name: string; status: "dirty" | "in_progress" | "clean"; myCleaningId: string | null;
+  id: string; name: string; status: "dirty" | "in_progress" | "clean"; address: string; myCleaningId: string | null;
 };
 
 const byName = (a: PickerApartment, b: PickerApartment) =>
@@ -40,6 +40,7 @@ export function ApartmentPicker({ apartments }: { apartments: PickerApartment[] 
                 className={`card flex items-center gap-3 p-4 ${a.myCleaningId ? "ring-2 ring-teal-600" : ""} ${a.status === "clean" ? "opacity-60" : ""}`}>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-lg font-semibold">{a.name}</p>
+                  {a.address && <p className="truncate text-sm text-slate-500">📍 {a.address}</p>}
                   <StatusBadge status={a.status} />
                 </div>
                 {a.myCleaningId ? (

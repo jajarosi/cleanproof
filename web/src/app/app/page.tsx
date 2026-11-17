@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDict } from "@/lib/i18n/server";
+import { ADDRESS_COLS, formatAddress } from "@/lib/apartments";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ApartmentPicker, type PickerApartment } from "./ApartmentPicker";
@@ -12,14 +13,18 @@ export default async function CleanerHome({ searchParams }: PageProps<"/app">) {
   const supabase = await createClient();
 
   const [{ data: apartments }, { data: mine }] = await Promise.all([
-    supabase.from("apartments").select("id, name, status").eq("org_id", profile.org_id).order("name"),
+    supabase.from("apartments").select(`id, name, status, ${ADDRESS_COLS}`).eq("org_id", profile.org_id).order("name"),
     supabase.from("cleanings").select("id, apartment_id")
       .eq("cleaner_id", profile.id).eq("org_id", profile.org_id).eq("status", "in_progress"),
   ]);
 
   const myByApt = new Map((mine ?? []).map((c) => [c.apartment_id, c.id]));
   const list: PickerApartment[] = (apartments ?? [])
-    .map((a) => ({ ...a, myCleaningId: myByApt.get(a.id) ?? null }));
+    .map((a) => ({
+      id: a.id, name: a.name, status: a.status,
+      address: formatAddress(a, t),
+      myCleaningId: myByApt.get(a.id) ?? null,
+    }));
 
   return (
     <div className="space-y-4">

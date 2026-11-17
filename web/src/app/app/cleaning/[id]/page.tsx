@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signPhotos } from "@/lib/photos";
+import { getDict } from "@/lib/i18n/server";
+import { ADDRESS_COLS, formatAddress, type ApartmentAddress } from "@/lib/apartments";
 import { CleaningSession } from "./CleaningSession";
 
 export default async function CleaningPage({ params }: PageProps<"/app/cleaning/[id]">) {
@@ -11,7 +13,7 @@ export default async function CleaningPage({ params }: PageProps<"/app/cleaning/
 
   const { data: cleaning } = await supabase
     .from("cleanings")
-    .select("id, org_id, status, started_at, cleaner_id, apartments(name), organizations(min_photos)")
+    .select(`id, org_id, status, started_at, cleaner_id, apartments(name, ${ADDRESS_COLS}), organizations(min_photos)`)
     .eq("id", id)
     .single();
 
@@ -23,7 +25,8 @@ export default async function CleaningPage({ params }: PageProps<"/app/cleaning/
     .eq("cleaning_id", id).order("created_at");
 
   const signed = await signPhotos(supabase, photos ?? []);
-  const apt = cleaning.apartments as unknown as { name: string };
+  const apt = cleaning.apartments as unknown as { name: string } & ApartmentAddress;
+  const { t } = await getDict();
   const org = cleaning.organizations as unknown as { min_photos: number };
 
   return (
@@ -31,6 +34,7 @@ export default async function CleaningPage({ params }: PageProps<"/app/cleaning/
       cleaningId={cleaning.id}
       orgId={cleaning.org_id}
       apartmentName={apt.name}
+      address={formatAddress(apt, t)}
       cleanerName={profile.full_name}
       startedAt={cleaning.started_at}
       minPhotos={org.min_photos}

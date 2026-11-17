@@ -6,6 +6,9 @@ import { getDict } from "@/lib/i18n/server";
 import { attachPhotos, fetchCleanings } from "@/lib/queries";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Duration, LocalTime } from "@/components/LocalTime";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { PhotoGrid } from "@/components/PhotoLightbox";
+import { ADDRESS_COLS, formatAddress } from "@/lib/apartments";
 import { MarkDirtyButton } from "../../MarkDirtyButton";
 
 export default async function ApartmentHistory({ params }: PageProps<"/admin/apartments/[id]">) {
@@ -14,13 +17,15 @@ export default async function ApartmentHistory({ params }: PageProps<"/admin/apa
   const { t } = await getDict();
   const supabase = await createClient();
 
-  const { data: apt } = await supabase.from("apartments").select("id, name, status").eq("id", id).eq("org_id", me.org_id).single();
+  const { data: apt } = await supabase.from("apartments").select(`id, name, status, ${ADDRESS_COLS}`).eq("id", id).eq("org_id", me.org_id).single();
   if (!apt) notFound();
 
+  const address = formatAddress(apt, t);
   const cleanings = await attachPhotos(supabase, await fetchCleanings(supabase, { orgId: me.org_id, apartmentId: id, limit: 50 }));
 
   return (
     <div className="space-y-6">
+      <AutoRefresh />
       <div>
         <Link href="/admin" className="text-sm text-slate-500 hover:underline">← {t.common.back}</Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -28,6 +33,7 @@ export default async function ApartmentHistory({ params }: PageProps<"/admin/apa
           <StatusBadge status={apt.status} />
           {apt.status === "clean" && <div className="w-56"><MarkDirtyButton id={apt.id} /></div>}
         </div>
+        {address && <p className="mt-1 text-slate-500">📍 {address}</p>}
       </div>
 
       <h2 className="text-lg font-semibold">{t.admin.history}</h2>
@@ -50,17 +56,7 @@ export default async function ApartmentHistory({ params }: PageProps<"/admin/apa
             </div>
             {c.comment && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">💬 {c.comment}</p>}
             {c.photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-                {c.photos.map((p) => (
-                  <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="relative block aspect-square overflow-hidden rounded-lg bg-slate-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt="" className="h-full w-full object-cover transition hover:scale-105" />
-                    <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
-                      <LocalTime iso={p.created_at} mode="time" />
-                    </span>
-                  </a>
-                ))}
-              </div>
+              <PhotoGrid photos={c.photos} className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6" />
             )}
           </li>
         ))}

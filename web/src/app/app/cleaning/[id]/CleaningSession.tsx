@@ -6,6 +6,7 @@ import { cancelCleaning, deletePhoto, finishCleaning } from "@/app/actions/clean
 import { useI18n } from "@/lib/i18n/client";
 import { errorMessage, fmt } from "@/lib/i18n/dictionaries";
 import { LocalTime } from "@/components/LocalTime";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 import type { SignedPhoto } from "@/lib/photos";
 
 const MAX_SIDE = 1600;
@@ -74,6 +75,7 @@ export function CleaningSession(props: {
   cleaningId: string;
   orgId: string;
   apartmentName: string;
+  address: string;
   cleanerName: string;
   startedAt: string;
   minPhotos: number;
@@ -84,6 +86,7 @@ export function CleaningSession(props: {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [pending, start] = useTransition();
@@ -200,6 +203,7 @@ export function CleaningSession(props: {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold">{props.apartmentName}</h1>
+        {props.address && <p className="text-slate-600">📍 {props.address}</p>}
         <p className="text-sm text-slate-500">
           {t.cleaner.startedAt} <LocalTime iso={props.startedAt} mode="time" />
         </p>
@@ -213,12 +217,12 @@ export function CleaningSession(props: {
 
         {total > 0 && (
           <div className="grid grid-cols-3 gap-2">
-            {props.photos.map((p) => (
+            {props.photos.map((p, i) => (
               <div key={p.id} className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
-                <a href={p.url} target="_blank" rel="noreferrer" className="block h-full w-full">
+                <button type="button" onClick={() => setViewing(i)} className="block h-full w-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.url} alt="" className={`h-full w-full object-cover ${deletingId === p.id ? "opacity-40" : ""}`} />
-                </a>
+                </button>
                 <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
                   <LocalTime iso={p.created_at} mode="time" />
                 </span>
@@ -251,6 +255,10 @@ export function CleaningSession(props: {
               </div>
             ))}
           </div>
+        )}
+
+        {viewing !== null && props.photos[viewing] && (
+          <PhotoLightbox photos={props.photos} index={viewing} onIndex={setViewing} onClose={() => setViewing(null)} />
         )}
 
         {failed.length > 0 && active.length === 0 && (

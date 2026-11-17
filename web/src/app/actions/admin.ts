@@ -9,27 +9,42 @@ import { errorMessage } from "@/lib/i18n/dictionaries";
 import type { FormState } from "./auth";
 
 // ---------- Logements ----------
+/** Champs du formulaire logement (adresse facultative, texte libre). */
+function apartmentFields(formData: FormData) {
+  const opt = (k: string) => String(formData.get(k) ?? "").trim() || null;
+  return {
+    name: String(formData.get("name") ?? "").trim(),
+    street: opt("street"),
+    building_number: opt("building_number"),
+    floor: opt("floor"),
+    unit: opt("unit"),
+  };
+}
+
 export async function addApartment(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireAdmin();
   const { t } = await getDict();
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { error: t.errors.generic };
+  const fields = apartmentFields(formData);
+  if (!fields.name) return { error: t.errors.generic };
   const supabase = await createClient();
-  const { error } = await supabase.from("apartments").insert({ org_id: me.org_id, name });
+  const { error } = await supabase.from("apartments").insert({ org_id: me.org_id, ...fields });
   if (error) return { error: errorMessage(t, error.message) };
   revalidatePath("/admin", "layout");
+  revalidatePath("/app");
   return { ok: t.admin.saved };
 }
 
-export async function renameApartment(id: string, name: string): Promise<FormState> {
+export async function updateApartment(_: FormState, formData: FormData): Promise<FormState> {
   const me = await requireAdmin();
   const { t } = await getDict();
-  if (!name.trim()) return { error: t.errors.generic };
+  const id = String(formData.get("id") ?? "");
+  const fields = apartmentFields(formData);
+  if (!id || !fields.name) return { error: t.errors.generic };
   const supabase = await createClient();
-  const { error } = await supabase.from("apartments")
-    .update({ name: name.trim() }).eq("id", id).eq("org_id", me.org_id);
+  const { error } = await supabase.from("apartments").update(fields).eq("id", id).eq("org_id", me.org_id);
   if (error) return { error: errorMessage(t, error.message) };
   revalidatePath("/admin", "layout");
+  revalidatePath("/app");
   return { ok: t.admin.saved };
 }
 
