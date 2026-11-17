@@ -1,9 +1,9 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDict } from "@/lib/i18n/server";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { ApartmentPicker, type PickerApartment } from "./ApartmentPicker";
-
-const ORDER = { dirty: 0, clean: 1, in_progress: 2 } as const;
 
 export default async function CleanerHome({ searchParams }: PageProps<"/app">) {
   const profile = await requireProfile();
@@ -19,15 +19,12 @@ export default async function CleanerHome({ searchParams }: PageProps<"/app">) {
 
   const myByApt = new Map((mine ?? []).map((c) => [c.apartment_id, c.id]));
   const list: PickerApartment[] = (apartments ?? [])
-    .map((a) => ({ ...a, myCleaningId: myByApt.get(a.id) ?? null }))
-    .sort((a, b) =>
-      Number(!b.myCleaningId) - Number(!a.myCleaningId) ||
-      ORDER[a.status as keyof typeof ORDER] - ORDER[b.status as keyof typeof ORDER] ||
-      a.name.localeCompare(b.name, undefined, { numeric: true }),
-    );
+    .map((a) => ({ ...a, myCleaningId: myByApt.get(a.id) ?? null }));
 
   return (
     <div className="space-y-4">
+      <AutoRefresh />
+      <InstallPrompt />
       {done === "1" && (
         <div className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200">
           ✓ {t.cleaner.finished}

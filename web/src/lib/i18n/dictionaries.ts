@@ -75,6 +75,17 @@ const fr = {
     cancelCleaning: "Annuler ce nettoyage",
     confirmCancel: "Annuler ce nettoyage ? Le logement repassera « À nettoyer ».",
     finished: "Merci ! Nettoyage enregistré.",
+    yourCleaning: "Votre ménage en cours",
+    deletePhoto: "Supprimer la photo",
+    confirmDeletePhoto: "Supprimer cette photo ?",
+    uploadProgress: "Envoi {done}/{total}…",
+    uploadFailed: "{n} photo(s) non envoyée(s). Vérifiez votre connexion puis réessayez.",
+    retry: "Réessayer",
+    installTitle: "Installez l'app sur votre téléphone",
+    installText: "Ouverture en un geste, en plein écran.",
+    installButton: "Installer",
+    installIos: "Touchez le bouton Partager, puis « Sur l'écran d'accueil ».",
+    later: "Plus tard",
   },
   admin: {
     dashboard: "Tableau de bord",
@@ -143,6 +154,7 @@ const fr = {
     apartment_not_found: "Logement introuvable.",
     duplicate_name: "Un logement porte déjà ce nom.",
     forbidden: "Action non autorisée.",
+    photo_not_found: "Photo introuvable ou ménage déjà terminé.",
   },
 };
 
@@ -222,6 +234,17 @@ const en: Dict = {
     cancelCleaning: "Cancel this cleaning",
     confirmCancel: "Cancel this cleaning? The unit will go back to “To clean”.",
     finished: "Thanks! Cleaning recorded.",
+    yourCleaning: "Your cleaning in progress",
+    deletePhoto: "Delete photo",
+    confirmDeletePhoto: "Delete this photo?",
+    uploadProgress: "Uploading {done}/{total}…",
+    uploadFailed: "{n} photo(s) not uploaded. Check your connection and try again.",
+    retry: "Retry",
+    installTitle: "Install the app on your phone",
+    installText: "Opens in one tap, full screen.",
+    installButton: "Install",
+    installIos: "Tap the Share button, then “Add to Home Screen”.",
+    later: "Later",
   },
   admin: {
     dashboard: "Dashboard",
@@ -290,6 +313,7 @@ const en: Dict = {
     apartment_not_found: "Unit not found.",
     duplicate_name: "A unit with this name already exists.",
     forbidden: "Not allowed.",
+    photo_not_found: "Photo not found or cleaning already finished.",
   },
 };
 

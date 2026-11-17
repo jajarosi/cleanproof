@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "Cleaner",
   description: "Suivi des ménages avec preuve photo",
   appleWebApp: { capable: true, title: "Cleaner", statusBarStyle: "default" },
+  icons: { icon: "/icon.svg", apple: "/icons/180" },
 };
 
 export const viewport: Viewport = {
